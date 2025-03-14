@@ -1,0 +1,17 @@
+{
+  "name": "hashless-tokens",
+  "version": "1.0.0",
+  "description": "ERC20, ERC721, ERC1155 implementation without using keccak256",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.19",
+    "hardhat-exposed": "^0.3.17"
+  }
+}
