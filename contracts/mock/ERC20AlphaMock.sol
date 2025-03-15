@@ -7,5 +7,5 @@ import {ERC20Metadata} from "../segmentation/ERC20Metadata.sol";
 contract ERC20AlphaMock is ERC20Alpha, ERC20Metadata {
     constructor(string memory name_, string memory symbol_) 
     ERC20Alpha(0x0) 
-    ERC20Metadata(1 << 210, name_, symbol_) { }
+    ERC20Metadata(1 << ERC20Alpha.LEVEL_SEGMENT_LENGTH, name_, symbol_) { }
 }

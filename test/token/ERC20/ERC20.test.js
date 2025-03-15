@@ -9,7 +9,7 @@ const {
   shouldBehaveLikeERC20Approve,
 } = require('./ERC20.behavior');
 
-const TOKENS = [{ Token: '$ERC20AlphaMock' }, { Token: '$ERC20BetaMock' }];
+const TOKENS = [{ Token: '$ERC20AlphaMock' }, { Token: '$ERC20BetaMock' }, { Token: '$ERC20GammaMock' }];
 
 const name = 'My Token';
 const symbol = 'MTKN';

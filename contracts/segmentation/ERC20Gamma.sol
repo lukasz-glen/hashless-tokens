@@ -5,16 +5,21 @@ import {IERC20} from "../IERC20.sol";
 import {IERC20Errors} from "../draft-IERC6093.sol";
 
 /**
- * @title ERC20 Alpha
+ * @title ERC20 Gamma
  * @author @lukasz-glen
  * @notice ERC20 implementation without using keccak256
  * @dev The token does not use solidity mappings - mappings are using keccak256.
  * Variables are stored in separate segments.
- * A crucial design point: spenders' addresses are assigned to sequential ids so
- * they are cut from 160 bits to 48 bits and allowances fit in a segment.
- * Though it costs a bit more gas.
+ * A crucial design point: the allowance is set for 160 bits of owner address and
+ * 90 high bits of spender address. The remaining low 70 bits of spender address
+ * is stored along with the allowance value.
+ * They are for verification.
+ * The benefit is that no keccak is needed.
+ * The side effects are: the total supply is limited, 
+ * it is not possible to have two positive approvals for the same owner and 
+ * two spenders with the same 90 high bits in the address.
  */
-abstract contract ERC20Alpha is IERC20, IERC20Errors {
+abstract contract ERC20Gamma is IERC20, IERC20Errors {
     /**
      * @dev Indicates an error that the max total supply is exceeded. Used in mint.
      * @param sender Address whose tokens are being minted.
@@ -26,17 +31,18 @@ abstract contract ERC20Alpha is IERC20, IERC20Errors {
     // the storage layout
     // single variables (zero segment):
     // uint256 public totalSupply;
-    // uint256 private spenderIdSeq; // last created spenderId
     // area variables:
     // mapping(address => uint256) internal balances; // 1st segment
-    // mapping(address => mapping(uint256 => uint256)) internal allowances; // owner x spenderId => allowance
+    // mapping(address => mapping(uint256 => uint256)) internal allowances; // owner x (spender 90 high bits) => 
+                                                                            // (spender 70 low bits) x allowance
                                                                             // 2nd segment
-    // mapping(address => uint256) internal spenderIds; // 3rd segment
 
-    uint256 private immutable level_segment;  // 210 bits length
+    uint256 private immutable level_segment;  // 252 bits length
     uint256 private constant sector_bits = 2;  // specify the segment number
-    uint256 private constant segment_length = 160 + 48;  // the length of each segment
-                                                         // enough to hold owner x spenderId for allowances
+    uint256 private constant spender_bits = 90;  // spender address bits in the allowance key
+    uint256 private constant segment_length = 160 + spender_bits;  // the length of each segment
+                                                         // enough to hold owner x (spender 90 high bits) for allowances
+    uint256 private constant MAX_TOTAL_SUPPLY = (1 << (96 + spender_bits)) - 1;
     uint256 internal constant LEVEL_SEGMENT_LENGTH = sector_bits + segment_length;
 
     constructor(uint256 _level_segment) {
@@ -69,20 +75,33 @@ abstract contract ERC20Alpha is IERC20, IERC20Errors {
 
     /**
      * @notice ERC20 function
+     * @dev The infinite allowance is stored as MAX_TOTAL_SUPPLY.
+     * Any approval greater than MAX_TOTAL_SUPPLY is considered 
+     * as the infinite approval.
+     * For the sake of complaince, the allowance() function returns type(uint256).max
+     * for the infinite allowance.
      */
     function allowance(address owner, address spender) external view returns (uint256 _allowance) {
-        uint256 _spenderId = getSpenderId(spender);
-        if (_spenderId == 0) {
-            return 0;
-        }
-        uint256 _allowanceSlot = getAllowanceSlot(owner, _spenderId);
+        uint256 _allowanceSlot = getAllowanceSlot(owner, spender);
         assembly {
             _allowance := sload(_allowanceSlot)
+            _allowance := xor(_allowance, shl(add(96, spender_bits), spender))
+            if shr(add(96, spender_bits), _allowance) {
+                _allowance := 0
+            }
+        }
+        if (_allowance == MAX_TOTAL_SUPPLY) {
+            _allowance = type(uint256).max;
         }
     }
 
     /**
      * @notice ERC20 function
+     * @dev The infinite allowance is stored as MAX_TOTAL_SUPPLY.
+     * Any approval greater than MAX_TOTAL_SUPPLY is considered 
+     * as the infinite approval.
+     * For the sake of complaince, the allowance() function returns type(uint256).max
+     * for the infinite allowance.
      */
     function approve(address spender, uint256 value) external returns (bool) {
         _approve(msg.sender, spender, value);
@@ -97,12 +116,18 @@ abstract contract ERC20Alpha is IERC20, IERC20Errors {
             revert ERC20InvalidSpender(address(0));
         }
 
-        uint256 _spenderId = spenderId(spender);
-        uint256 _allowanceSlot = getAllowanceSlot(owner, _spenderId);
-        assembly {
-            sstore(_allowanceSlot, value)
+        if (value > MAX_TOTAL_SUPPLY) {
+            value = MAX_TOTAL_SUPPLY;
         }
-        emit Approval(owner, spender, value);
+        uint256 _allowanceSlot = getAllowanceSlot(owner, spender);
+        assembly {
+            sstore(_allowanceSlot, or(shl(add(96, spender_bits), spender), value))
+        }
+        if (value == MAX_TOTAL_SUPPLY) {
+            emit Approval(owner, spender, type(uint256).max);
+        } else {
+            emit Approval(owner, spender, value);
+        }
     }
 
     /**
@@ -180,6 +205,9 @@ abstract contract ERC20Alpha is IERC20, IERC20Errors {
                 if (_totalSupply + value < _totalSupply) {
                     revert ERC20TotalSupplyOverflow(to, _totalSupply, value);
                 }
+                if (_totalSupply + value > MAX_TOTAL_SUPPLY) {
+                    revert ERC20TotalSupplyOverflow(to, _totalSupply, value);
+                }
             }
             // no overflow - checked
             assembly{
@@ -214,15 +242,13 @@ abstract contract ERC20Alpha is IERC20, IERC20Errors {
     }
 
     function _decreaseAllowance(address owner, address spender, uint256 value) internal {
+        uint256 _allowanceSlot = getAllowanceSlot(owner, spender);
         uint256 _allowance;
-        uint256 _allowanceSlot = 0;
-        uint256 _spenderId = getSpenderId(spender);
-        if (_spenderId == 0) {
-            _allowance = 0;
-        } else {
-            _allowanceSlot = getAllowanceSlot(owner, _spenderId);
-            assembly {
-                _allowance := sload(_allowanceSlot)
+        assembly {
+            _allowance := sload(_allowanceSlot)
+            _allowance := xor(_allowance, shl(add(96, spender_bits), spender))
+            if shr(add(96, spender_bits), _allowance) {
+                _allowance := 0
             }
         }
 
@@ -230,67 +256,20 @@ abstract contract ERC20Alpha is IERC20, IERC20Errors {
             revert ERC20InsufficientAllowance(spender, _allowance, value);
         }
 
-        if (value > 0 && _allowance < type(uint256).max) {
+        // the inifinite allowance is stored as MAX_TOTAL_SUPPLY
+        if (value > 0 && _allowance < MAX_TOTAL_SUPPLY) {
             // no underflow - checked
             assembly {
-                sstore(_allowanceSlot, sub(_allowance, value))
+                sstore(_allowanceSlot, or(shl(add(96, spender_bits), spender), sub(_allowance, value)))
             }
         }
     }
 
-    /**
-     * Returns the spender id, never throws, the spender id is assumed to fit in 48 bits, not validated.
-     * The spender id is positive.
-     * If a spender has no id assigned, zero is returned.
-     * @param spender a spender address
-     * @return _spenderId if zero then not found, at most 48 significant bits
-     */
-    function getSpenderId(address spender) internal view returns (uint256 _spenderId) {
-        uint256 _spenderIdSlot = getSpenderIdSlot(spender);
-        assembly {
-            _spenderId := sload(_spenderIdSlot)
-        }
-    }
-
-    /**
-     * Gets the spender id or sets it if not found.
-     * The next spender id is taken from the spenderIdSeq sequence.
-     * The returned spender id fits in 48 bits or throws.
-     * @param spender a spender address
-     * @return _spenderId the spender id, at most 48 significant bits
-     */
-    function spenderId(address spender) internal returns (uint256) {
-        uint256 _spenderId;
-        uint256 _spenderIdSlot = getSpenderIdSlot(spender);
-        assembly {
-            _spenderId := sload(_spenderIdSlot)
-        }
-        if (_spenderId > 0) {
-            return _spenderId;
-        }
-
-        uint256 _spenderIdSeqSlot = getSpenderIdSeqSlot();
-        assembly {
-            _spenderId := add(1, sload(_spenderIdSeqSlot))
-        }
-        require(_spenderId < 1 << 48, "run out of ids");
-        assembly {
-            sstore(_spenderIdSeqSlot, _spenderId)
-            sstore(_spenderIdSlot, _spenderId)
-        }
-        return _spenderId;
-    }
 
     ///////////////////// STORAGE LAYOUT HELPERS ////////////////////////////
 
     function getTotalSupplySlot() internal view returns (uint256) {
         return level_segment;
-    }
-
-    function getSpenderIdSeqSlot() internal view returns (uint256) {
-        unchecked {
-            return level_segment + 1;
-        }
     }
 
     function getBalanceSlot(address owner) internal view returns (uint256) {
@@ -301,21 +280,15 @@ abstract contract ERC20Alpha is IERC20, IERC20Errors {
 
     /**
      * Calculates the slot key in storage for owner x spender.
-     * A spender is given as a spender id.
-     * The spender id is not validated, this is an internal function.
      * @param owner an owner address
-     * @param _spenderId a spender address id, must fit in 48 bits
+     * @param spender a spender address
      * @return slot the slot key in storage
      */
-    function getAllowanceSlot(address owner, uint256 _spenderId) internal view returns (uint256) {
+    function getAllowanceSlot(address owner, address spender) internal view returns (uint256) {
         unchecked {
-            return level_segment + (2 << segment_length) + (_spenderId << 160) + uint256(uint160(owner));
-        }
-    }
-
-    function getSpenderIdSlot(address spender) internal view returns (uint256) {
-        unchecked {
-            return level_segment + (3 << segment_length) + uint256(uint160(spender));
+            return level_segment + (2 << segment_length)
+                + (uint256(uint160(owner)) << spender_bits)
+                + (uint256(uint160(spender)) >> (160 - spender_bits));
         }
     }
 }

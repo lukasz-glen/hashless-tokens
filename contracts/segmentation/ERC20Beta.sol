@@ -38,10 +38,11 @@ abstract contract ERC20Beta is IERC20, IERC20Errors {
     uint256 private constant sector_bits = 2;  // specify the segment number
     uint256 private constant segment_length = 160 + 48;  // the length of each segment
                                                          // enough to hold owner x spenderId for allowances
+    uint256 internal constant LEVEL_SEGMENT_LENGTH = sector_bits + segment_length;
 
     constructor(uint256 _level_segment, IAddressRegistry _addressRegistry) {
         require(
-            _level_segment & ((1 << (sector_bits + segment_length)) - 1) == 0,
+            _level_segment & ((1 << LEVEL_SEGMENT_LENGTH) - 1) == 0,
             "invalid level segment selector"
             );
         require(address(_addressRegistry) != address(0), "null pointer to AddressRegistry");
@@ -264,7 +265,7 @@ abstract contract ERC20Beta is IERC20, IERC20Errors {
      * A spender is given as a spender id.
      * The spender id is not validated, this is an internal function.
      * @param owner an owner address
-     * @param _spenderId a spender address, must fit in 48 bits
+     * @param _spenderId a spender address id, must fit in 48 bits
      * @return slot the slot key in storage
      */
     function getAllowanceSlot(address owner, uint256 _spenderId) internal view returns (uint256) {
