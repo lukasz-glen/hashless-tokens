@@ -21,13 +21,13 @@ but outside of a contract.
 Note that it is not possible to eliminate using `keccak256`.
 For instance, see EIP-712.
 
-## Segments
+## Storage Segments
 
 32 bytes for key length is a lot.
-Smartcontracts and using even a fraction of it,
+Smartcontracts are not using even a fraction of it,
 and they are not indended to.
 
-Standard solidity shares storage.
+Standard solidity variables, area variables, share storage.
 If a contract has two `mapping` variables,
 they both are using the whole storage.
 Probability of collision is astronomical.
@@ -39,8 +39,8 @@ It is straightforward for a simple variable like
 it is enough to reserve a single slot.
 To replace `mapping(address => uint256) internal balances`
 more space is needed, a segment actually.
-`2**160` slots is needed to be reserved, 
-for instance the segment could consists of slots 
+`2**160` slots is needed to be reserved,
+for instance the segment could consists of slots
 from `1<<160` to `1<<160 + 1<<160 - 1` inclusive.
 
 So far so good.
@@ -56,13 +56,13 @@ of segment.
 So the goal is to provide a storage layout
 by dividing storage into separate segments
 assigned to contract's variables,
-variables includes lists and mappings.
+variables include lists and mappings.
 
 ## Drawbacks
 
 The benefit is obvious: no `keccak256` in contracts.
 
-At the moment the cost is very high.
+At the moment, the cost is very high.
 
 1. Storage layout is a manual work.
 A lot of good things that come with solidity cannot be used.
@@ -78,7 +78,7 @@ For instance, a contract in pure solidity and a contract with segements
 should not inherit one from the other. Why?
 `mapping` covers the whole storage. 
 With a segment, a raw user's input may be used to calculate a storage slot.
-It may be much easier to find a collistion.
+In such a case, it may be much easier to find a collistion.
 
 There is a hope that the situation will get better in time.
 Technically it is quite possible.
@@ -115,7 +115,7 @@ The idea is to replace values based on `keccak256` with
 those with shorter ranges. Note that the address is
 the result of `keccak256` also. But it cannot be replaced directly.
 
-The number of address that will be ever in use is limited,
+The number of addresses that will be ever in use is limited,
 both by cryptographic design and blockchain capabilities.
 No more than `2**48` addresses ever is a rough estimate.
 
@@ -123,12 +123,12 @@ The soft solution, contract level, is Address Registry Contract.
 You or any contract can register any address
 and a sequential number is assigned.
 This way 160 bit long address is replaced with 48 bit long id.
-And `address x address` key is reduced to 96 bits.
+And `address x address` key can be reduced to 96 bits.
 
 Please note that Address Registry Contract 
 is not used in every token implementation.
 This is one of possible solutions.
-The point is that it can be shared by multiple tokens
+The point is that it can be shared by multiple contracts
 saving code, gas and storage.
 
 ## Tests
