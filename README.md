@@ -97,6 +97,13 @@ all inherited contracts, actually defines the storage layout.
 The level segment is further divided into segments according to variables
 defined by a contract.
 
+## Implementations
+
+1. Alpha. Internally, 160 bits length spender address is mapped to 48 bits length id. 
+2. Beta. Externally, 160 bits length spender address is mapped to 48 bits length id.
+Externally with Address Registry Contract.
+3. Gamma. To support allowances in storage, the spender address is cut to 90 high bits.
+
 ## Address Registry Contract
 
 As stated above,
