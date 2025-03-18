@@ -3,6 +3,8 @@
 Several implementations of statndard tokens, ERC20, ERC721, NFT1155, 
 with a special purpose - to not use `keccak256`.
 
+Note that this an experimental work and it is a part of research.
+
 ## Hashing
 
 Hashing operations turned out to be a problem when generating ZK proofs for a block.
@@ -10,9 +12,10 @@ This refers to precompiles like `SHA2-256` and the `KECCAK2556` opcode.
 See EIP-7667.
 
 Whenever you use `mapping` type in a solidity smartcontract,
-there are `keccak256` executions under the hood.
+there are `keccak256` executions under the hood. 
+The same for `string`, `bytes` and array types when persisted in storage.
 
-Here are solidity smartcontracts implementing the standards 
+In this repo there are solidity smartcontracts implementing the standards 
 that are not using `mapping` types and `KECCAK256` explicitly.
 
 Note that EVM address is a result of hashing itself,
@@ -27,12 +30,12 @@ For instance, see EIP-712.
 Smartcontracts are not using even a fraction of it,
 and they are not indended to.
 
-Standard solidity variables, area variables, share storage.
+Standard solidity variables - area variables - share storage.
 If a contract has two `mapping` variables,
-they both are using the whole storage.
+they are both using the whole storage.
 Probability of collision is astronomical.
 
-Here is proposed an alternative approach.
+In this work there is proposed an alternative approach.
 Each variable gets its own separate storage space.
 It is straightforward for a simple variable like
 `uint256 public totalSupply`,
@@ -46,6 +49,7 @@ from `1<<160` to `1<<160 + 1<<160 - 1` inclusive.
 So far so good.
 The challenge is to replace `mapping(address => mapping(address => uint256)) internal approvals`
 as `address x address` key requires 320 bits.
+Delivered implementations come with different solutions, check them for further details.
 
 The `n` bits segment is a compact space of slots
 from `d<<n` to `d<<n + 1<<n - 1` inclusive,
@@ -62,11 +66,11 @@ variables include lists and mappings.
 
 The benefit is obvious: no `keccak256` in contracts.
 
-At the moment, the cost is very high.
+At the moment, the cost for it is very high.
 
 1. Storage layout is a manual work.
 A lot of good things that come with solidity cannot be used.
-This impact not only development efficiency
+This impacts not only development efficiency
 but also security.
 2. There is a lot of YUL.
 It is harder to use code analyzers and other automated tools
@@ -95,7 +99,7 @@ The latter is a constructor parameter.
 The top level contract should define selectors/discriminators for
 all inherited contracts, actually defines the storage layout.
 The level segment is further divided into segments according to variables
-defined by a contract.
+defined by a level contract.
 
 ## Implementations
 
@@ -119,7 +123,7 @@ The number of addresses that will be ever in use is limited,
 both by cryptographic design and blockchain capabilities.
 No more than `2**48` addresses ever is a rough estimate.
 
-The soft solution, contract level, is Address Registry Contract.
+The soft solution is Address Registry Contract.
 You or any contract can register any address
 and a sequential number is assigned.
 This way 160 bit long address is replaced with 48 bit long id.
