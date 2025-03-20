@@ -164,7 +164,7 @@ for implementations:
 - ERC20 - there is a zero approval for an owner and a spender,
 - ERC20Alpha - a spender's address has been never approved since a token creation regardless an owner,
 - ERC20Beta - a spender's address is not registerd in Address Registry Contract,
-- ERC20Gamma - a zero approval.
+- ERC20Gamma - there is a zero approval for an owner and a spender.
 
 Note that
 1. `ERC20Beta.transferFrom()` gas usage includes
@@ -200,3 +200,8 @@ Obvious
 ```shell
 npx hardhat test
 ```
+
+TODO 
+- ERC721
+- ERC1155
+- proxy updates
