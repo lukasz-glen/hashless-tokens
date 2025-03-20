@@ -1,6 +1,6 @@
 # HashLess Tokens
 
-Several implementations of statndard tokens, ERC20, ERC721, NFT1155, 
+Several implementations of standard tokens, ERC20, ERC721, NFT1155,
 with a special purpose - to not use `keccak256`.
 
 Note that this an experimental work and it is a part of research.
@@ -28,12 +28,12 @@ For instance, see EIP-712.
 
 32 bytes for key length is a lot.
 Smartcontracts are not using even a fraction of it,
-and they are not indended to.
+and they are not intended to.
 
 Standard solidity variables - area variables - share storage.
 If a contract has two `mapping` variables,
 they are both using the whole storage.
-Probability of collision is astronomical.
+Probability of collision is extremely low.
 
 In this work there is proposed an alternative approach.
 Each variable gets its own separate storage space.
@@ -75,14 +75,14 @@ but also security.
 2. There is a lot of YUL.
 It is harder to use code analyzers and other automated tools
 supporting audits.
-3. Clasic solidity storage layout (using `mapping`) should not be mixed
+3. Classic solidity storage layout (using `mapping`) should not be mixed
 with segmented storage layout.
 Or at least should be taken with great caution.
-For instance, a contract in pure solidity and a contract with segements
+For instance, a contract in pure solidity and a contract with segments
 should not inherit one from the other. Why?
 `mapping` covers the whole storage. 
 With a segment, a raw user's input may be used to calculate a storage slot.
-In such a case, it may be much easier to find a collistion.
+In such a case, it may be much easier to find a collision.
 
 There is a hope that the situation will get better in time.
 Technically it is quite possible.
@@ -103,7 +103,7 @@ defined by a level contract.
 
 ## Implementations
 
-1. Alpha. Internally, 160 bits length spender address is mapped to 48 bits length id. 
+1. Alpha. Internally, 160 bits length spender address is mapped to 48 bits length id.
 2. Beta. Externally, 160 bits length spender address is mapped to 48 bits length id.
 Externally with Address Registry Contract.
 3. Gamma. To support allowances in storage, the spender address is cut to 90 high bits.
