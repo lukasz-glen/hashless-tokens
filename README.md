@@ -103,7 +103,10 @@ defined by a level contract.
 
 ## Implementations
 
-1. Alpha. Internally, 160 bits length spender address is mapped to 48 bits length id.
+The most important difference is how implmentations replace 
+`mapping(address => mapping(address => uint256)) internal approvals`.
+
+1. Alpha. Internally, 160 bits length spender address is mapped to 48 bits length id. 
 2. Beta. Externally, 160 bits length spender address is mapped to 48 bits length id.
 Externally with Address Registry Contract.
 3. Gamma. To support allowances in storage, the spender address is cut to 90 high bits.
