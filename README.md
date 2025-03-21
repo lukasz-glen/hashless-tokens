@@ -143,6 +143,47 @@ saving code, gas and storage.
 Token tests are borrowed from OpenZeppelin, MIT license. 
 Actually, this impacted the implementation design.
 
+## ERC20 Gas Usage
+
+Tests include benchmarks that measure the gas usage,
+see `ERC20Benchmark.test.js`.
+The gas-reporter from hardhat is not used
+because 
+
+The `ERC20` implementation from OpenZeppelin is added for comparison.
+
+|              | ERC20   | ERC20Alpha | ERC20Beta | ERC20Gamma |
+|--------------|---------|------------|-----------|------------|
+| transfer to an empty account     | 52195 | 52069 | 52025  | 52037 |
+| approval to an untouched account | 46903 | 91188 | 118475 | 47571 |
+| approval to a touched account    | 29803 | 31895 | 35592  | 30471 |
+| transferFrom to an empty account | 58427 | 60203 | 63985  | 58432 |
+
+An untouched account has different meaning
+for implementations:
+- ERC20 - there is a zero approval for an owner and a spender,
+- ERC20Alpha - a spender's address has been never approved since a token creation regardless an owner,
+- ERC20Beta - a spender's address is not registerd in Address Registry Contract,
+- ERC20Gamma - there is a zero approval for an owner and a spender.
+
+Note that
+1. `ERC20Beta.transferFrom()` gas usage includes
+the cost of accessing the cold address of Address Registry Contract.
+2. Spenders are usually DEXes or marketplaces or other platforms.
+Approved addresses (spenders) often repeat.
+It is expected that the set of spenders is 
+significantly smaller than the set of owners.
+So for ERC20Alpha and ERC20Beta an approval
+to an untouched should be rare.
+This notice stands behind the idea that a spender's
+address is mapped to id.
+3. For ERC20Beta an approval to an untouched
+address is even more rare since
+Address Registry Account is shared by 
+all ERC20Beta instances and possibly other contracts.
+4. In the benchmarks, `transfer()` and `transferFrom()` do not empty source accounts i.e. not all tokens are transferred. 
+Also approvals are not zeroed.
+
 ## Useful commands
 
 Install dependencies
@@ -159,3 +200,8 @@ Obvious
 ```shell
 npx hardhat test
 ```
+
+TODO 
+- ERC721
+- ERC1155
+- proxy updates
