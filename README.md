@@ -87,12 +87,17 @@ In such a case, it may be much easier to find a collision.
 There is a hope that the situation will get better in time.
 Technically it is quite possible.
 
-## Level segment
+## Inheritance
 
 Not only variables need segments.
 Contracts in an inheritance tree must use different storage space,
 segments cannot overlap.
-So each contract in the inheritance tree, i.e. level,
+
+### Level segment
+
+Alpha, Beta, Gamma are using the level segments. Delta is not, see below.
+
+Each contract in the inheritance tree, i.e. level,
 defines the level segment.
 It defines the length in bits, but does not define the selector/discriminator.
 The latter is a constructor parameter.
@@ -100,6 +105,26 @@ The top level contract should define selectors/discriminators for
 all inherited contracts, actually defines the storage layout.
 The level segment is further divided into segments according to variables
 defined by a level contract.
+
+### Delta
+
+For every variable, single or area, in every contract in the 
+inheritance tree, there is a function that calculates
+the storage slot number, e.g. `getTotalSupplySlot()`.
+The point is that the top level contract can override 
+these functions so selectable slots cannot collide.
+For convenience, the documentation tag `@custom:segment-length-bits`
+is added for each such function. This tag means that
+the function is for storage layout definition
+and determines the segment length, e.g. `8` bits means 
+the segment occupies `2**8` slots.
+
+This approach seems to be a bit better.
+In the future it could be automated
+so developing hashless tokens would be easier.
+It also seems that proxy updates would be easier
+to support - for instance another custom tags
+could track contracts versions.
 
 ## Implementations
 
