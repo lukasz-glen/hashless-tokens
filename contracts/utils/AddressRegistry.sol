@@ -28,11 +28,23 @@ contract AddressRegistry is IAddressRegistry {
 
     /**
      * @notice checks if an address was registered
+     * @dev returns non zero id if found, returns zero if not found
+     * @param addr any address, zero address is valid
+     * @return id valid address id or zero
+     */
+    function getAddressId(address addr) external view returns (uint256 id) {
+        assembly {
+            id := sload(addr)
+        }
+    }
+
+    /**
+     * @notice checks if an address was registered
      * @dev returns non zero id or reverts with NotFound if not found
      * @param addr any address, zero address is valid
      * @return id non zero address id if found
      */
-    function getAddressId(address addr) external view returns (uint256 id) {
+    function findAddressId(address addr) external view returns (uint256 id) {
         assembly {
             id := sload(addr)
             if iszero(id) {
@@ -74,7 +86,7 @@ contract AddressRegistry is IAddressRegistry {
      * @param id on zero address id
      * @return addr non zero address id if found
      */
-    function getAddressById(uint256 id) external view returns (address addr) {
+    function findAddressById(uint256 id) external view returns (address addr) {
         if (id == 0 || id > 0x010000000000000000000000000000000000000000) {
             revert InvalidId();
         }

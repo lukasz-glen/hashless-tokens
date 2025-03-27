@@ -7,6 +7,7 @@ interface IAddressRegistry {
     event AddressId(address indexed addr, uint256 indexed id);
     
     function getAddressId(address addr) external view returns (uint256 id);
+    function findAddressId(address addr) external view returns (uint256 id);
     function addressId(address addr) external returns (uint256 id);
-    function getAddressById(uint256 id) external view returns (address addr);
+    function findAddressById(uint256 id) external view returns (address addr);
 }
