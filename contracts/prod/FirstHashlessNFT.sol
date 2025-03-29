@@ -6,7 +6,7 @@ import {ERC721Delta} from "../segmentation/ERC721Delta.sol";
 import {IAddressRegistry} from "../utils/IAddressRegistry.sol";
 import {Operations} from "../utils/Operations.sol";
 
-contract AddressRegistryNFT is ERC721Delta {
+contract FirstHashlessNFT is ERC721Delta {
     event MetadataFrozen();
 
     // uint256 internal totalSupply;
@@ -14,7 +14,7 @@ contract AddressRegistryNFT is ERC721Delta {
     address internal immutable contractOwner;
 
     constructor(IAddressRegistry _addressRegistry) 
-    ERC721Delta("AddressRegistryNFT", "AddrReg", _addressRegistry) {
+    ERC721Delta("FirstHashlessNFT", "1!#", _addressRegistry) {
         contractOwner = msg.sender;
     }
 
@@ -42,11 +42,6 @@ contract AddressRegistryNFT is ERC721Delta {
             return;
         }
 
-        uint256 _registeredAddressSlot = getRegisteredAddressSlot(uint160(addressId));
-        assembly {
-            sstore(_totalSupplySlot, add(_totalSupply, 1))
-            sstore(_registeredAddressSlot, caller())
-        }
         _safeMint(msg.sender, addressId, data);
     }
 
@@ -54,13 +49,16 @@ contract AddressRegistryNFT is ERC721Delta {
         if (tokenId > 2**160 - 1) {
             revert ERC721NonexistentToken(tokenId);
         }
-        uint256 _registeredAddressSlot = getRegisteredAddressSlot(uint160(tokenId));
+        uint256 _ownerSlot = getOwnerSlot(uint160(tokenId));
+        address _owner;
         assembly {
-            _registeredAddress := sload(_registeredAddressSlot)
+            _owner := sload(_ownerSlot)
         }
-        if (_registeredAddress == address(0)) {
+        if (_owner == address(0)) {
             revert ERC721NonexistentToken(tokenId);
         }
+
+        return addressRegistry.findAddressById(tokenId);
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -121,15 +119,6 @@ contract AddressRegistryNFT is ERC721Delta {
      */
     function getBaseURISlot() internal virtual pure returns (uint256) {
         return 3 << 8;
-    }
-
-    /**
-     * @custom:segment-length-bits 160
-     */
-    function getRegisteredAddressSlot(uint160 tokenId) internal virtual pure returns (uint256) {
-        unchecked {
-            return (4 << 160) + uint256(tokenId);
-        }
     }
 
 }
