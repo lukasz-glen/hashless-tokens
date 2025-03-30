@@ -139,5 +139,39 @@ describe('FirstHashless NFT', function () {
     await expect(firstHashlessNFTReceiver.register(data))
       .to.be.revertedWithCustomError(this.firstHashlessNFT, 'ERC721InvalidReceiver')
       .withArgs(firstHashlessNFTReceiver.target);
-});
+  });
+
+  it('two registered', async function () {
+    await this.firstHashlessNFT.connect(this.holder1).register();
+    await this.firstHashlessNFT.connect(this.holder2).register();
+    expect(await this.firstHashlessNFT.ownerOf(1))
+      .to.be.eq(this.holder1.address);
+    expect(await this.firstHashlessNFT.ownerOf(2))
+      .to.be.eq(this.holder2.address);
+  });
+
+  it('gaps in token ids', async function () {
+    await this.addressRegistry.addressId(this.holder1.address);
+    await this.firstHashlessNFT.connect(this.holder2).register();
+    await expect(this.firstHashlessNFT.ownerOf(1))
+      .to.be.revertedWithCustomError(this.firstHashlessNFT, 'ERC721NonexistentToken')
+      .withArgs(1);
+    expect(await this.firstHashlessNFT.ownerOf(2))
+      .to.be.eq(this.holder2.address);
+  });
+
+  // this is very long test, may fail due the timeout
+  it('10_000 tokens', async function () {
+    await this.addressRegistry.addressId(this.holder1.address);
+    const firstHashlessNFT_10_000_test = 
+      await ethers.deployContract("FirstHashlessNFT_10_000_test", [this.addressRegistry.target, this.firstHashlessNFT.target]);
+
+    for (let i = 0; i < 10_000; i++) {
+      await firstHashlessNFT_10_000_test.register();
+    }
+
+    await expect(this.firstHashlessNFT.connect(this.holder1).register())
+      .to.be.revertedWith('no more tokens');
+  }).timeout(200000);
+
 });

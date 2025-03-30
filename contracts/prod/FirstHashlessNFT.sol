@@ -42,6 +42,9 @@ contract FirstHashlessNFT is ERC721Delta {
             return;
         }
 
+        assembly {
+            sstore(_totalSupplySlot, add(_totalSupply, 1))
+        }
         _safeMint(msg.sender, addressId, data);
     }
 
