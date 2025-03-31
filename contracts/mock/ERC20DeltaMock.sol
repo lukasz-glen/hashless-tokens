@@ -2,13 +2,13 @@
 pragma solidity 0.8.28;
 
 import {ERC20Delta} from "../segmentation/ERC20Delta.sol";
-import {ERC20MetadataD} from "../segmentation/ERC20MetadataD.sol";
+import {ERC20MetadataDelta} from "../segmentation/ERC20MetadataDelta.sol";
 import {AddressRegistry} from "../utils/AddressRegistry.sol";
 
-contract ERC20DeltaMock is ERC20Delta, ERC20MetadataD {
+contract ERC20DeltaMock is ERC20Delta, ERC20MetadataDelta {
     constructor(string memory name_, string memory symbol_) 
     ERC20Delta(new AddressRegistry()) 
-    ERC20MetadataD(name_, symbol_) { }
+    ERC20MetadataDelta(name_, symbol_) { }
 
     /**
      * @custom:segment-length-bits 8

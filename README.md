@@ -95,7 +95,7 @@ segments cannot overlap.
 
 ### Level segment
 
-Alpha, Beta, Gamma are using the level segments. Delta is not, see below.
+Alpha, Beta, Gamma are using the level segments. Delta, Epsilon are not, see below.
 
 Each contract in the inheritance tree, i.e. level,
 defines the level segment.
@@ -126,6 +126,29 @@ It also seems that proxy updates would be easier
 to support - for instance another custom tags
 could track contracts versions.
 
+### Epsilon
+
+Epsilon relies on solutions provided by Solidity.
+Instead of segments, large fixed size arrays are declared.
+For instance, instead of 
+
+```
+mapping(address => uint256) internal _balances;
+```
+
+there is
+
+```
+uint256[2**160] private _balances;
+```
+
+The benefit is that storage layout is handled by solidity.
+The drawbacks are: compiler warnings,
+private modifier rather than internal (hardhat-exposed issue),
+some types (string, bytes, dynamic size arrays) must be handled non idiomatic way,
+indexes must be calculated manually.
+And the problem of proxy upgrades is still not solved.
+
 ## Implementations
 
 The most important difference is how implmentations replace 
@@ -137,6 +160,9 @@ Externally with Address Registry Contract.
 3. Gamma. To support allowances in storage, the spender address is cut to 90 high bits.
 4. Delta. The same as Beta but with storage layout managed with virtual functions,
 seems to be more flexible.
+5. Epsilon. The same as Beta but with storage layout managed with fixed size arrays.
+It is solidity based solution. Almost - strings are supported with YUL. Note that arrays
+that replace mappings are extremly large what has drawbacks.
 
 ## Address Registry Contract
 
@@ -176,16 +202,16 @@ Additional tests and benchmarks are added.
 Tests include benchmarks that measure the gas usage,
 see `ERC20Benchmark.test.js`.
 The gas-reporter from hardhat is not used
-because 
+because exact scenarios are needed.
 
 The `ERC20` implementation from OpenZeppelin is added for comparison.
 
-|              | ERC20   | ERC20Alpha | ERC20Beta | ERC20Gamma | ERC20Delta  |
-|--------------|---------|------------|-----------|------------|-------------|
-| transfer to an empty account     | 52195 | 52069 | 52025  | 52037 | 51995  |
-| approval to an untouched account | 46903 | 91188 | 118475 | 47571 | 118466 |
-| approval to a touched account    | 29803 | 31895 | 35592  | 30471 | 35583  |
-| transferFrom to an empty account | 58427 | 60203 | 63985  | 58432 | 63929  |
+|              | ERC20   | ERC20Alpha | ERC20Beta | ERC20Gamma | ERC20Delta  | ERC20Epsilon |
+|--------------|---------|------------|-----------|------------|-------------|--------------|
+| transfer to an empty account     | 52195 | 52069 | 52025  | 52037 | 51995  | 52015  |
+| approval to an untouched account | 46903 | 91188 | 118475 | 47571 | 118466 | 118430 |
+| approval to a touched account    | 29803 | 31895 | 35592  | 30471 | 35583  | 35547  |
+| transferFrom to an empty account | 58427 | 60203 | 63985  | 58432 | 63929  | 63955  |
 
 An untouched account has different meaning
 for implementations:
@@ -194,6 +220,7 @@ for implementations:
 - ERC20Beta - a spender's address is not registerd in Address Registry Contract,
 - ERC20Gamma - there is a zero approval for an owner and a spender.
 - ERC20Delta - the same as ERC20Beta.
+- ERC20DEpsilon - the same as ERC20Beta.
 
 Note that
 1. `ERC20Beta.transferFrom()` gas usage includes

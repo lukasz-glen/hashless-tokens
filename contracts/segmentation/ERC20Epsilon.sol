@@ -6,7 +6,7 @@ import {IERC20Errors} from "../draft-IERC6093.sol";
 import {IAddressRegistry} from "../utils/IAddressRegistry.sol";
 
 /**
- * @title ERC20 Delta
+ * @title ERC20 Epsilon
  * @author @lukasz-glen
  * @notice ERC20 implementation without using keccak256
  * @dev The token does not use solidity mappings - mappings are using keccak256.
@@ -16,22 +16,23 @@ import {IAddressRegistry} from "../utils/IAddressRegistry.sol";
  * spenders' addresses are cut from 160 bits to 48 bits and allowances fit in a segment.
  * Though it costs a bit more gas.
  */
-abstract contract ERC20Delta is IERC20, IERC20Errors {
+abstract contract ERC20Epsilon is IERC20, IERC20Errors {
     /**
      * @dev Indicates an error that the max total supply is exceeded. Used in mint.
      * @param sender Address whose tokens are being minted.
-     * @param totalSupply Current total supply.
+     * @param _totalSupply Current total supply.
      * @param value Requested value.
      */
-    error ERC20TotalSupplyOverflow(address sender, uint256 totalSupply, uint256 value);
+    error ERC20TotalSupplyOverflow(address sender, uint256 _totalSupply, uint256 value);
 
     // the storage layout
     // single variables:
-    // uint256 public totalSupply;
+    uint256 public totalSupply;
     // area variables:
-    // mapping(address => uint256) internal balances; // 1st segment
-    // mapping(address => mapping(uint256 => uint256)) internal allowances; // owner x spenderId => allowance
-                                                                            // 2nd segment
+    // cannot be internal because of hardhat-exposed tests
+    uint256[2**160] private _balances; // owner => balance
+    // cannot be internal because of hardhat-exposed tests
+    uint256[2**160 * 2**48] private _allowances; // owner x spenderId => allowance
 
     IAddressRegistry private immutable addressRegistry;
 
@@ -43,36 +44,30 @@ abstract contract ERC20Delta is IERC20, IERC20Errors {
     /**
      * @notice ERC20 function
      */
-    function totalSupply() external view returns (uint256 _totalSupply) {
-        uint256 _totalSupplySlot = getTotalSupplySlot();
-        assembly {
-            _totalSupply := sload(_totalSupplySlot)
-        }
+    function balanceOf(address owner) external view returns (uint256) {
+        return _balances[uint256(uint160(owner))];
+    }
+
+    /**
+     * @dev for inheriting contracts, no checks
+     */
+    function _setBalance(address owner, uint256 value) internal {
+        _balances[uint256(uint160(owner))] = value;
     }
 
     /**
      * @notice ERC20 function
      */
-    function balanceOf(address owner) external view returns (uint256 _balance) {
-        uint256 _balanceSlot = getBalanceSlot(owner);
-        assembly {
-            _balance := sload(_balanceSlot)
-        }
-    }
-
-    /**
-     * @notice ERC20 function
-     */
-    function allowance(address owner, address spender) external view returns (uint256 _allowance) {
+    function allowance(address owner, address spender) external view returns (uint256) {
         uint256 _spenderId = addressRegistry.getAddressId(spender);
         // almost impossible to happen, for the sake of completness
         require(_spenderId < 1 << 48, "excessive address id");
         if (_spenderId == 0) {
             return 0;
         }
-        uint256 _allowanceSlot = getAllowanceSlot(owner, uint48(_spenderId));
-        assembly {
-            _allowance := sload(_allowanceSlot)
+        unchecked {
+            // no overflow
+            return _allowances[(uint256(_spenderId) << 160) + uint256(uint160(owner))];
         }
     }
 
@@ -95,9 +90,10 @@ abstract contract ERC20Delta is IERC20, IERC20Errors {
         uint256 _spenderId = addressRegistry.addressId(spender);
         // almost impossible to happen, for the sake of completness
         require(_spenderId < 1 << 48, "excessive address id");
-        uint256 _allowanceSlot = getAllowanceSlot(owner, uint48(_spenderId));
-        assembly {
-            sstore(_allowanceSlot, value)
+
+        unchecked {
+            // no overflow
+            _allowances[(uint256(_spenderId) << 160) + uint256(uint160(owner))] = value;
         }
         emit Approval(owner, spender, value);
     }
@@ -155,54 +151,34 @@ abstract contract ERC20Delta is IERC20, IERC20Errors {
 
     function _update(address from, address to, uint256 value) internal {
         if (from != address(0)) {
-            uint256 _fromBalance;
-            uint256 _fromBalanceSlot = getBalanceSlot(from);
-            assembly {
-                _fromBalance := sload(_fromBalanceSlot)
-            }
+            uint256 _fromBalance = _balances[uint256(uint160(from))];
             if (_fromBalance < value) {
                 revert ERC20InsufficientBalance(from, _fromBalance, value);
             }
-            // no underflow - checked
-            assembly{
-                sstore(_fromBalanceSlot, sub(_fromBalance, value))
+            unchecked {
+                // no underflow - checked
+                _balances[uint256(uint160(from))] = _fromBalance - value;
             }
         } else {
-            uint256 _totalSupply;
-            uint256 _totalSupplySlot = getTotalSupplySlot();
-            assembly {
-                _totalSupply := sload(_totalSupplySlot)
-            }
             unchecked {
-                if (_totalSupply + value < _totalSupply) {
-                    revert ERC20TotalSupplyOverflow(to, _totalSupply, value);
+                if (totalSupply + value < totalSupply) {
+                    revert ERC20TotalSupplyOverflow(to, totalSupply, value);
                 }
+                // no overflow - checked
+                totalSupply += value;
             }
-            // no overflow - checked
-            assembly{
-                sstore(_totalSupplySlot, add(_totalSupply, value))
-            }            
         }
 
         if (to != address(0)) {
-            uint256 _toBalance;
-            uint256 _toBalanceSlot = getBalanceSlot(to);
-            assembly {
-                _toBalance := sload(_toBalanceSlot)
-            }
-            // no overflow - cannot exceed the total supply
-            assembly{
-                sstore(_toBalanceSlot, add(_toBalance, value))
+            uint256 _toBalance  = _balances[uint256(uint160(to))];
+            unchecked {
+                // no overflow - cannot exceed the total supply
+                _balances[uint256(uint160(to))] = _toBalance + value;
             }
         } else {
-            uint256 _totalSupply;
-            uint256 _totalSupplySlot = getTotalSupplySlot();
-            assembly {
-                _totalSupply := sload(_totalSupplySlot)
-            }
-            // no underflow - by implication
-            assembly{
-                sstore(_totalSupplySlot, sub(_totalSupply, value))
+            unchecked {
+                // no underflow - by implication
+                totalSupply -= value;
             }
         }
 
@@ -212,16 +188,15 @@ abstract contract ERC20Delta is IERC20, IERC20Errors {
 
     function _decreaseAllowance(address owner, address spender, uint256 value) internal {
         uint256 _allowance;
-        uint256 _allowanceSlot = 0;
         uint256 _spenderId = addressRegistry.getAddressId(spender);
         // almost impossible to happen, for the sake of completness
         require(_spenderId < 1 << 48, "excessive address id");
         if (_spenderId == 0) {
             _allowance = 0;
         } else {
-            _allowanceSlot = getAllowanceSlot(owner, uint48(_spenderId));
-            assembly {
-                _allowance := sload(_allowanceSlot)
+            unchecked {
+                // no overflow
+                _allowance = _allowances[(uint256(_spenderId) << 160) + uint256(uint160(owner))];
             }
         }
 
@@ -230,37 +205,10 @@ abstract contract ERC20Delta is IERC20, IERC20Errors {
         }
 
         if (value > 0 && _allowance < type(uint256).max) {
-            // no underflow - checked
-            assembly {
-                sstore(_allowanceSlot, sub(_allowance, value))
+            unchecked {
+                // no underflow - checked
+                _allowances[(uint256(_spenderId) << 160) + uint256(uint160(owner))] = _allowance - value;
             }
-        }
-    }
-
-    ///////////////////// STORAGE LAYOUT FUNCTIONS ////////////////////////////
-
-    /**
-     * @custom:segment-length-bits 0
-     */
-    function getTotalSupplySlot() internal virtual pure returns (uint256) {
-        return 0;
-    }
-
-    /**
-     * @custom:segment-length-bits 160
-     */
-    function getBalanceSlot(address owner) internal virtual pure returns (uint256) {
-        unchecked {
-            return (1 << 160) + uint256(uint160(owner));
-        }
-    }
-
-    /**
-     * @custom:segment-length-bits 208
-     */
-    function getAllowanceSlot(address owner, uint48 _spenderId) internal virtual pure returns (uint256) {
-        unchecked {
-            return (2 << 208) + (uint256(_spenderId) << 160) + uint256(uint160(owner));
         }
     }
 }

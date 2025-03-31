@@ -5,7 +5,13 @@ const {
   runERC20Benchmark,
 } = require('./ERC20.benchmark');
 
-const TOKENS = [{ Token: '$ERC20Mock' }, { Token: '$ERC20AlphaMock' }, { Token: '$ERC20BetaMock' }, { Token: '$ERC20GammaMock' }, { Token: '$ERC20DeltaMock' }];
+const TOKENS = [
+  { Token: '$ERC20AlphaMock' }, 
+  { Token: '$ERC20BetaMock' }, 
+  { Token: '$ERC20GammaMock' }, 
+  { Token: '$ERC20DeltaMock' },
+  { Token: '$ERC20EpsilonMock' },
+];
 
 const name = 'My Token';
 const symbol = 'MTKN';
