@@ -6,5 +6,26 @@
   </head>
   <body>
     <h2>First Hashless NFT (1!#)</h2>
+    <p>Hello Traveller.</p>
+    <p>Welcome to First Hashless NFTs. These are experimental tokens that do not use KECCAK256 or other hashes within the smart contract. 
+    The work is directed to make tokens friendly to ZK proof generation by limiting the number of hashes.
+    If you are interested, want to support, or simply you are curious about it, grab a token for yourself, from one of the chains.
+    <ul>
+      <li><a href="https://sepolia.etherscan.io/token/0x1a57edab67bced4b48b521a7833b5619263268f8">Ethereum Sepolia</a></li>
+      <li><a href="https://etherscan.io/token/0x6cad684e21fc6d59b8509d0701c400ddf8c9af97">Ethereum Mainnet</a></li>
+      <li><a href="https://basescan.org/token/0x1a57EDAb67bCeD4b48B521A7833b5619263268F8">Base Mainnet</a></li>
+      <li><a href="https://optimistic.etherscan.io/token/0x1a57edab67bced4b48b521a7833b5619263268f8">Optimism Mainnet</a></li>
+      <li><a href="https://polygonscan.com/token/0xa5f3210ee2ca266af440c9badd5b8d2fcbbb0bc2">Polygon Mainnet</a></li>
+    </ul>
+    Just execute <i>register()</i> to mint a token. Or <i>register(data)</i> in case you need callback data for a smart contract wallet.</p>
+    <p>One address can mint only one token on a chain. There is a limit for 10 000 of total supply. 
+    Tokens are weakly soul bound, i.e. you can transfer a token, but you will not mint another one with the same address and a token remembers the first owner - call <i>getRegisteredAddress(tokenId)</i>.
+    (Surely, someone could mint many tokens from multiple artificial addresses, but lets be honest, that's lame and would not make anyone a great hacker).
+    You do not have to pay anything except the transaction gas cost.</p>
+    <p>The choice of chains is not particular, I can deploy new NFT contracts on new chains on request.</p>
+    <p>The art is temporary and it will be replaced when I find a helpful artist. Metadata, the arts and locations may change. 
+    The contract has an option to freeze metadata. 
+    Do not be alarmed when you mint a token and there is a delay with metadata avaibility.</p>
+    <p>Check <a href="https://github.com/lukasz-glen/hashless-tokens">the project site</a> for technical details and <a href="TERMS_OF_USE.md">Terms of Use</a>.</p>
   </body>
 </html>
