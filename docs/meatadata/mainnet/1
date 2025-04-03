@@ -1,5 +1,5 @@
 {
     "name": "Token 1, 1st Hashless NFT on Ethereum",
     "description": "1st Hashless NFT contract that is not using KECCAK256 or other hashing internally. For further technical information on this experimental project see https://github.com/lukasz-glen/hashless-tokens",
-    "image": "https://lukasz-glen.github.io/hashless-tokens/meatadata/mainnet/1st_hashless_nft_mainnet.png",
+    "image": "https://lukasz-glen.github.io/hashless-tokens/meatadata/mainnet/1st_hashless_nft_mainnet.png"
 }
