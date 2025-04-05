@@ -1,5 +1,6 @@
 {
     "name": "Token 1, 1st Hashless NFT on Optimism",
     "description": "1st Hashless NFT contract that is not using KECCAK256 or other hashing internally. For further technical information on this experimental project see https://github.com/lukasz-glen/hashless-tokens",
+    "external_url": "https://lukasz-glen.github.io/hashless-tokens/",
     "image": "https://lukasz-glen.github.io/hashless-tokens/meatadata/optimism-mainnet/1st_hashless_nft_optimism.png"
 }
