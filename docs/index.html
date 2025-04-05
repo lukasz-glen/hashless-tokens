@@ -3,7 +3,6 @@
 <html>
   <head>
     <title>First Hashless NFT (1!#)</title>
-	<!-- import Web3.js -->
 	<script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>  
   </head>
   <body>
@@ -62,9 +61,14 @@
 		  var account = undefined;
 
 		  document.getElementById('requestAccounts').addEventListener('click', async () => {
-		    // await window.ethereum.request({ method: 'eth_requestAccounts' });
-		    document.getElementById('requestAccounts').remove();
+		    await window.ethereum.request({ method: 'eth_requestAccounts' });
+			document.getElementById('requestAccounts').disabled = true;
 		    const accounts = await web3.eth.getAccounts();
+			if (accounts.length == 0) {
+				document.getElementById('requestAccounts').disabled = false;
+				return;
+			}
+		    document.getElementById('requestAccounts').remove();
 		    account = accounts[0];
 		    document.getElementById('connectedAccount', ).innerText = `Account: ${account}`;
 
