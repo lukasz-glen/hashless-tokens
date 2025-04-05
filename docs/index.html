@@ -3,8 +3,134 @@
 <html>
   <head>
     <title>First Hashless NFT (1!#)</title>
+	<!-- import Web3.js -->
+	<script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>  
   </head>
   <body>
+	<div id="chain"></div>
+	<div id="connectedAccount"></div>
+        <div>
+          <button id="requestAccounts">Request MetaMask Accounts</button>
+        </div>
+	<div id="token">No token found</div>
+        <div>
+          <button id="register">Register to get a token</button>
+        </div>
+	<div id="warn" style="color: red"></div>
+
+	<script type="module">
+	  document.getElementById('register').disabled = true;
+	  // ensure that there is an injected the Ethereum provider
+	  if (window.ethereum) {
+	  	const tokenAddresses = new Map();
+                tokenAddresses.set(11155111n, '0x1a57EDAb67bCeD4b48B521A7833b5619263268F8');
+                tokenAddresses.set(1n, '0x6cad684e21fc6d59b8509d0701c400ddf8c9af97');
+                tokenAddresses.set(8453n, '0x1a57EDAb67bCeD4b48B521A7833b5619263268F8');
+                tokenAddresses.set(10n, '0x1a57EDAb67bCeD4b48B521A7833b5619263268F8');
+		tokenAddresses.set(137n, '0xa5f3210ee2ca266af440c9badd5b8d2fcbbb0bc2');
+                const registryAddresses = new Map();
+                registryAddresses.set(11155111n, '0x166D9CB36950eA6966b4a196762e385d0eC5ff0A');
+                registryAddresses.set(1n, '0x9BE76934C0139E89118304A1a7c73E5A11D40b14');
+                registryAddresses.set(8453n, '0x166D9CB36950eA6966b4a196762e385d0eC5ff0A');
+                registryAddresses.set(10n, '0x166D9CB36950eA6966b4a196762e385d0eC5ff0A');
+                registryAddresses.set(137n, '0x507AdDf3D5c91a68E4ba45b3B184205d61901207');
+		const chainNames = new Map();
+		chainNames.set(11155111n, 'ethereum sepolia');
+                chainNames.set(1n, 'ethereum mainnet');
+                chainNames.set(8453n, 'base mainnet');
+                chainNames.set(10n, 'optimism mainnet');
+                chainNames.set(137n, 'polygon mainnet');
+
+		// use the injected Ethereum provider to initialize Web3.js
+		const web3 = new Web3(window.ethereum);
+
+		const chainId = await web3.eth.getChainId();
+		if (chainNames.has(chainId)) {
+		  document.getElementById('chain', ).innerText = `Chain: ${chainId} (${chainNames.get(chainId)})`;
+		  const registryABI = [
+		    {"inputs": [ {"internalType": "address", "name": "addr", "type": "address"} ], "name": "getAddressId", "outputs": [ {"internalType": "uint256", "name": "id", "type": "uint256"} ],"stateMutability": "view", "type": "function"}
+		  ];
+		  const registryContract = new web3.eth.Contract( registryABI, registryAddresses.get(chainId));
+		  const tokenABI = [
+		    {"inputs": [ {"internalType": "uint256", "name": "tokenId", "type": "uint256"} ], "name": "ownerOf", "outputs": [ {"internalType": "address", "name": "_owner", "type": "address"} ], "stateMutability": "view", "type": "function"},
+		    {"inputs": [ {"internalType": "uint256", "name": "tokenId", "type": "uint256"} ], "name": "ERC721NonexistentToken", "type": "error"},
+		    {"inputs": [], "name": "register", "outputs": [], "stateMutability": "nonpayable", "type": "function"}
+		  ];
+		  const tokenContract = new web3.eth.Contract( tokenABI, tokenAddresses.get(chainId));
+
+		  var tokenId = undefined;
+		  var account = undefined;
+
+		  document.getElementById('requestAccounts').addEventListener('click', async () => {
+		    // await window.ethereum.request({ method: 'eth_requestAccounts' });
+		    document.getElementById('requestAccounts').remove();
+		    const accounts = await web3.eth.getAccounts();
+		    account = accounts[0];
+		    document.getElementById('connectedAccount', ).innerText = `Account: ${account}`;
+
+		    async function updateTokenInfo() {
+		      const addressId = await registryContract.methods.getAddressId(registryAddresses.get(chainId)).call({from: account});
+		      // addressId == 0 means not registered
+		      if (addressId != 0n) {
+		        try {
+		          // addressId is the same as tokenId actually
+		          tokenOwnerAddress = await tokenContract.methods.ownerOf(addressId).call();
+			  tokenId = addressId;
+			  if (tokenOwnerAddress == account) {
+			    document.getElementById('token', ).innerText = `Token ID: ${tokenId}`;
+			  } else {
+			    document.getElementById('token', ).innerText = `TOKEN ID: ${tokenId} (transferred)`;
+			  }
+		        } catch (e) {
+			  if (! (e.innerError && e.innerError.has('errorName') && e.innerError['errorName'] == 'ERC721NonexistentToken') ) {
+			    console.log(e);
+			    document.getElementById('warn').innerHTML = "Uncaught Error";
+			    // just to disable minting
+			    tokenId = 0n;
+			  }
+			  // else the error is ERC721NonexistentToken, simply not exists, that is ok
+		        }
+		      }
+		    }
+		    await updateTokenInfo();
+		    if (tokenId === undefined) {
+		      document.getElementById('register').disabled = false;
+		      document.getElementById('register').addEventListener('click', async () => {
+		        document.getElementById('register').disabled = true;
+			try {
+			  const receipt = await tokenContract.methods.register().send({from: account, gas: 200000});
+			  if (receipt.status) {
+                            await updateTokenInfo();
+			  } else {
+			    document.getElementById('warn').innerHTML = `The transaction reverted, tx hash: ${receipt.transactionHash}`;
+			  }
+			} catch (e) {
+			  document.getElementById('register').disabled = false;
+			  if (e.innerError) {
+			    console.log(JSON.stringify(e.innerError));
+			    if (e.innerError['errorName']) {
+			      document.getElementById('warn').innerHTML = `An error occured during operation: ${e.innerError['errorName']}`;
+			    } else {
+			      document.getElementById('warn').innerHTML = `An error occured during operation: ${e.innerError['code']} - ${e.innerError['message']}`;
+			    }
+			  } else {
+			    console.log(e);
+			    document.getElementById('warn').innerHTML = "An error occured during operation";
+			  }
+			}
+		      });
+		    }
+		  });
+		} else {
+		  document.getElementById('chain', ).innerText = `Chain: ${chainId} (unsupported)`;
+		  document.getElementById('requestAccounts').disabled = true;
+		}
+	  } else {
+	    document.getElementById('warn').innerHTML = "No wallet detected";
+	    document.getElementById('requestAccounts').disabled = true;
+	  }
+	</script>
+
     <h2>First Hashless NFT (1!#)</h2>
     <p>Hello Traveller.</p>
     <p>Welcome to First Hashless NFTs. These are experimental tokens that do not use KECCAK256 or other hashes within the smart contract. 
@@ -29,3 +155,4 @@
     <p>Check <a href="https://github.com/lukasz-glen/hashless-tokens">the project site</a> for technical details and <a href="TERMS_OF_USE.md">Terms of Use</a>.</p>
   </body>
 </html>
+
