@@ -17,6 +17,9 @@
 		<button id="register">Register to get a token</button>
 	</div>
 	<div id="warn" style="color: red"></div>
+	<div>
+		<img id="token-image" alt="First Hashless NFT (1#!)" src="first_hashless_nft.png" width="250"/>
+	</div>
 
 	<script type="module">
 		document.getElementById('register').disabled = true;
@@ -40,6 +43,12 @@
 			chainNames.set(8453n, 'base mainnet');
 			chainNames.set(10n, 'optimism mainnet');
 			chainNames.set(137n, 'polygon mainnet');
+			const tokenImages = new Map();
+			tokenImages.set(11155111n, 'meatadata/sepolia/1st_hashless_nft_sepolia.png');
+			tokenImages.set(1n, 'meatadata/mainnet/1st_hashless_nft_mainnet.png');
+			tokenImages.set(8453n, 'meatadata/base-mainnet/1st_hashless_nft_base.png');
+			tokenImages.set(10n, 'meatadata/optimism-mainnet/1st_hashless_nft_optimism.png');
+			tokenImages.set(137n, 'meatadata/polygon-mainnet/1st_hashless_nft_polygon.png');
 
 			// use the injected Ethereum provider to initialize Web3.js
 			const web3 = new Web3(window.ethereum);
@@ -86,6 +95,7 @@
 								} else {
 									document.getElementById('token',).innerText = `TOKEN ID: ${tokenId} (transferred)`;
 								}
+								document.getElementById('token-image',).src = tokenImages.get(chainId);
 							} catch (e) {
 								if (!(e.innerError && e.innerError.has('errorName') && e.innerError['errorName'] == 'ERC721NonexistentToken')) {
 									console.log(e);
@@ -124,6 +134,8 @@
 								}
 							}
 						});
+					} else {
+						document.getElementById('register').remove();
 					}
 				});
 			} else {
